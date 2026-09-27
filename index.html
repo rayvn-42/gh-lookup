@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gh://lookup</title>
+<style>
+  :root{
+    --bg:#0a0e0c;
+    --bg2:#0f1512;
+    --fg:#39ff14;
+    --fg-dim:#1f7a0d;
+    --fg-muted:#5c6b5f;
+    --accent:#00e5ff;
+    --err:#ff3b3b;
+    --border:#1a2b1e;
+    font-family: 'JetBrains Mono','Fira Code',Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top, #0d1410 0%, var(--bg) 60%);
+    color:var(--fg);
+    min-height:100vh;
+    padding:40px 16px 80px;
+  }
+  .crt::before{
+    content:"";
+    position:fixed; inset:0;
+    background:repeating-linear-gradient(
+      to bottom, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px,
+      transparent 1px, transparent 3px
+    );
+    pointer-events:none;
+    z-index:2;
+  }
+  .wrap{max-width:720px; margin:0 auto; position:relative; z-index:1;}
+
+  .term-header{
+    border:1px solid var(--border);
+    border-radius:6px;
+    background:var(--bg2);
+    padding:10px 14px;
+    margin-bottom:24px;
+    display:flex; align-items:center; gap:8px;
+    color:var(--fg-muted);
+    font-size:12px;
+  }
+  .dot{width:10px;height:10px;border-radius:50%;}
+  .dot.r{background:#ff5f56;} .dot.y{background:#ffbd2e;} .dot.g{background:#27c93f;}
+  .term-title{margin-left:8px;}
+
+  h1{
+    font-size:20px;
+    margin:0 0 4px;
+    letter-spacing:0.5px;
+  }
+  h1 .prompt{color:var(--accent);}
+  .sub{color:var(--fg-muted); font-size:13px; margin-bottom:28px;}
+
+  form{display:flex; gap:8px; margin-bottom:8px;}
+  .prefix{
+    display:flex; align-items:center;
+    color:var(--accent);
+    font-weight:bold;
+  }
+  input[type="text"]{
+    flex:1;
+    background:var(--bg2);
+    border:1px solid var(--border);
+    color:var(--fg);
+    padding:12px 14px;
+    font-family:inherit;
+    font-size:14px;
+    border-radius:4px;
+    outline:none;
+  }
+  input[type="text"]:focus{border-color:var(--fg-dim);}
+  input[type="text"]::placeholder{color:var(--fg-muted);}
+  button{
+    background:transparent;
+    border:1px solid var(--fg-dim);
+    color:var(--fg);
+    padding:0 20px;
+    font-family:inherit;
+    font-size:14px;
+    border-radius:4px;
+    cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  button:hover{background:var(--fg); color:#031500;}
+  button:disabled{opacity:0.4; cursor:default;}
+
+  .hint{color:var(--fg-muted); font-size:12px; margin:6px 0 28px;}
+
+  #status{min-height:20px; font-size:13px; margin-bottom:8px;}
+  #status.error{color:var(--err);}
+  #status.loading{color:var(--fg-muted);}
+
+  .card{
+    display:none;
+    border:1px solid var(--border);
+    background:var(--bg2);
+    border-radius:6px;
+    padding:24px;
+    margin-bottom:24px;
+    animation:fade .25s ease;
+  }
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+  .card.show{display:block;}
+
+  .profile{display:flex; gap:18px;}
+  .avatar{width:84px; height:84px; border-radius:6px; border:1px solid var(--border);}
+  .profile-info{flex:1; min-width:0;}
+  .name{font-size:17px; color:var(--fg); margin:0;}
+  .login{color:var(--accent); font-size:13px; margin:2px 0 8px;}
+  .bio{color:var(--fg-muted); font-size:13px; margin:0 0 10px; line-height:1.5;}
+  .meta{display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--fg-muted);}
+  .meta span::before{content:"$ "; color:var(--fg-dim);}
+
+  .stats{display:flex; gap:0; margin-top:18px; border-top:1px solid var(--border); padding-top:16px;}
+  .stat{flex:1; text-align:center;}
+  .stat b{display:block; font-size:18px; color:var(--fg);}
+  .stat small{color:var(--fg-muted); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;}
+
+  .profile-link{
+    display:inline-block; margin-top:16px;
+    color:var(--accent); text-decoration:none; font-size:12px;
+    border:1px solid var(--fg-dim); padding:6px 12px; border-radius:4px;
+  }
+  .profile-link:hover{background:var(--fg-dim); color:#031500;}
+
+  .section-title{
+    color:var(--fg-muted); font-size:12px; text-transform:uppercase;
+    letter-spacing:1px; margin:0 0 12px;
+  }
+  .repo{
+    border-bottom:1px solid var(--border);
+    padding:12px 0;
+  }
+  .repo:last-child{border-bottom:none;}
+  .repo-name{color:var(--fg); font-size:14px; text-decoration:none;}
+  .repo-name:hover{color:var(--accent);}
+  .repo-desc{color:var(--fg-muted); font-size:12px; margin:4px 0;}
+  .repo-meta{display:flex; gap:14px; font-size:11px; color:var(--fg-muted);}
+  .lang-dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; background:var(--fg-dim);}
+
+  footer{text-align:center; color:var(--fg-muted); font-size:11px; margin-top:40px;}
+  footer a{color:var(--fg-dim);}
+</style>
+</head>
+<body class="crt">
+<div class="wrap">
+
+  <div class="term-header">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="term-title">user@github: ~/lookup</span>
+  </div>
+
+  <h1><span class="prompt">$</span> gh lookup</h1>
+  <p class="sub">Look up any public GitHub profile via the GitHub REST API.</p>
+
+  <form id="searchForm">
+    <span class="prefix">~/&gt;</span>
+    <input type="text" id="username" placeholder="enter a github username..." autocomplete="off" spellcheck="false">
+    <button type="submit" id="searchBtn">search</button>
+  </form>
+  <p class="hint">e.g. octocat, torvalds, gaearon — press Enter or click search</p>
+
+  <div id="status"></div>
+
+  <div class="card" id="profileCard">
+    <div class="profile">
+      <img class="avatar" id="avatar" src="" alt="avatar">
+      <div class="profile-info">
+        <p class="name" id="pname"></p>
+        <p class="login" id="plogin"></p>
+        <p class="bio" id="pbio"></p>
+        <div class="meta" id="pmeta"></div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sRepos">0</b><small>repos</small></div>
+      <div class="stat"><b id="sFollowers">0</b><small>followers</small></div>
+      <div class="stat"><b id="sFollowing">0</b><small>following</small></div>
+      <div class="stat"><b id="sGists">0</b><small>gists</small></div>
+    </div>
+    <a class="profile-link" id="profileLink" href="#" target="_blank" rel="noopener">view on github &rarr;</a>
+  </div>
+
+  <div class="card" id="reposCard">
+    <p class="section-title">Top repositories (by stars)</p>
+    <div id="repoList"></div>
+  </div>
+
+  <footer>
+    Built with the <a href="https://docs.github.com/en/rest" target="_blank" rel="noopener">GitHub REST API</a> · no login required · static page, deployable on GitHub Pages
+  </footer>
+
+</div>
+
+<script>
+const form = document.getElementById('searchForm');
+const input = document.getElementById('username');
+const btn = document.getElementById('searchBtn');
+const status = document.getElementById('status');
+const profileCard = document.getElementById('profileCard');
+const reposCard = document.getElementById('reposCard');
+
+function setStatus(text, cls){
+  status.textContent = text || '';
+  status.className = cls || '';
+}
+
+function fmtDate(d){
+  return new Date(d).toLocaleDateString(undefined, {year:'numeric', month:'short'});
+}
+
+function fmtNum(n){
+  if(n >= 1000) return (n/1000).toFixed(1).replace(/\.0$/,'') + 'k';
+  return n;
+}
+
+async function lookup(username){
+  if(!username) return;
+  profileCard.classList.remove('show');
+  reposCard.classList.remove('show');
+  btn.disabled = true;
+  setStatus('$ fetching /users/' + username + ' ...', 'loading');
+
+  try{
+    const userRes = await fetch('https://api.github.com/users/' + encodeURIComponent(username));
+    if(userRes.status === 404){
+      setStatus('error: user "' + username + '" not found (404)', 'error');
+      return;
+    }
+    if(userRes.status === 403){
+      setStatus('error: GitHub API rate limit hit — try again in a bit', 'error');
+      return;
+    }
+    if(!userRes.ok){
+      setStatus('error: request failed (' + userRes.status + ')', 'error');
+      return;
+    }
+    const user = await userRes.json();
+
+    document.getElementById('avatar').src = user.avatar_url;
+    document.getElementById('pname').textContent = user.name || user.login;
+    document.getElementById('plogin').textContent = '@' + user.login;
+    document.getElementById('pbio').textContent = user.bio || '';
+    document.getElementById('pbio').style.display = user.bio ? 'block' : 'none';
+
+    const meta = [];
+    if(user.location) meta.push('<span>' + user.location + '</span>');
+    if(user.company) meta.push('<span>' + user.company + '</span>');
+    meta.push('<span>joined ' + fmtDate(user.created_at) + '</span>');
+    document.getElementById('pmeta').innerHTML = meta.join('');
+
+    document.getElementById('sRepos').textContent = user.public_repos;
+    document.getElementById('sFollowers').textContent = fmtNum(user.followers);
+    document.getElementById('sFollowing').textContent = fmtNum(user.following);
+    document.getElementById('sGists').textContent = user.public_gists;
+    document.getElementById('profileLink').href = user.html_url;
+
+    profileCard.classList.add('show');
+    setStatus('$ fetching /users/' + username + '/repos ...', 'loading');
+
+    const reposRes = await fetch('https://api.github.com/users/' + encodeURIComponent(username) + '/repos?per_page=100');
+    const repos = reposRes.ok ? await reposRes.json() : [];
+    const top = repos
+      .filter(r => !r.fork)
+      .sort((a,b) => b.stargazers_count - a.stargazers_count)
+      .slice(0, 5);
+
+    const list = document.getElementById('repoList');
+    if(top.length === 0){
+      list.innerHTML = '<p class="repo-desc">no public repositories found.</p>';
+    } else {
+      list.innerHTML = top.map(r => `
+        <div class="repo">
+          <a class="repo-name" href="${r.html_url}" target="_blank" rel="noopener">${r.name}</a>
+          <p class="repo-desc">${r.description ? r.description.replace(/</g,'&lt;') : 'no description'}</p>
+          <div class="repo-meta">
+            <span>&#9733; ${fmtNum(r.stargazers_count)}</span>
+            <span>&#8942; ${fmtNum(r.forks_count)}</span>
+            ${r.language ? `<span><span class="lang-dot"></span>${r.language}</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+    reposCard.classList.add('show');
+    setStatus('$ done.', '');
+  } catch(err){
+    setStatus('error: network request failed', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  lookup(input.value.trim());
+});
+</script>
+</body>
+</html>
